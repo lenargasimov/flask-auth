@@ -13,6 +13,7 @@ db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -34,6 +35,11 @@ def home():
 @app.route('/register', methods=["GET", "POST"])
 def register():
     if request.method == "POST":
+
+        if User.query.filter_by(email=request.form.get('email')).first():
+            # User already exists
+            flash("You've already signed up with that email, log in instead!")
+            return redirect(url_for('login'))
 
         hash_and_salted_password = generate_password_hash(
             request.form.get('password'),
@@ -63,9 +69,15 @@ def login():
 
         # Find user by email entered.
         user = User.query.filter_by(email=email).first()
-
-        # Check stored password hash against entered password hashed.
-        if check_password_hash(user.password, password):
+        if not user:
+            flash("That email does not exist, please try again.")
+            return redirect(url_for('login'))
+        # Password incorrect
+        elif not check_password_hash(user.password, password):
+            flash('Password incorrect, please try again.')
+            return redirect(url_for('login'))
+        # Email exists and password correct
+        else:
             login_user(user)
             return redirect(url_for('secrets'))
 
